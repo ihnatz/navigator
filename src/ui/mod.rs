@@ -11,15 +11,26 @@ use ratatui::{
     Frame, Terminal,
 };
 
+enum Commands {
+    QUIT,
+}
+
+struct State {
+    current: usize,
+}
+
 pub fn main() -> io::Result<()> {
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    let mut state = State { current: 0 };
 
-    let mut should_quit = false;
-    while !should_quit {
+    loop {
         terminal.draw(ui)?;
-        should_quit = handle_events()?;
+        match handle_events(&mut state) {
+            Some(Commands::QUIT) => break,
+            _ => (),
+        }
     }
 
     disable_raw_mode()?;
@@ -27,18 +38,21 @@ pub fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn handle_events() -> io::Result<bool> {
-    if event::poll(std::time::Duration::from_millis(50))? {
-        if let Event::Key(key) = event::read()? {
+fn handle_events(state: &mut State) -> Option<Commands> {
+    if event::poll(std::time::Duration::from_millis(50)).unwrap() {
+        if let Ok(Event::Key(key)) = event::read() {
             if key.kind != event::KeyEventKind::Press {
-                return Ok(false);
+                return None;
             }
-            if key.kind == event::KeyEventKind::Press && key.code == KeyCode::Char('q') {
-                return Ok(true);
+            match key.code {
+                KeyCode::Char('q') => return Some(Commands::QUIT),
+                KeyCode::Up => state.current = state.current.saturating_sub(1),
+                KeyCode::Down => state.current = state.current.saturating_add(1),
+                _ => (),
             }
         }
     }
-    Ok(false)
+    return None;
 }
 
 fn ui(frame: &mut Frame) {
