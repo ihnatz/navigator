@@ -1,0 +1,12 @@
+{
+  "foo": {
+    "bar": {
+      "baz": "echo 'Hello World'",
+      "fub": "ls -al"
+    }
+  },
+  "til": "sudo du --exclude=/mnt/ -h . | sort -rh | head -10",
+  "abc": {
+    "inner": "cat ~/.zsh_eternal_history"
+  }
+}
