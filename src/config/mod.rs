@@ -60,6 +60,8 @@ impl Menu {
     }
 }
 
+const INDENTATION_SPACES: usize = 2;
+
 impl fmt::Display for Menu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn print_level(
@@ -68,7 +70,7 @@ impl fmt::Display for Menu {
             node: &MenuItem,
             level: usize,
         ) -> fmt::Result {
-            let indent = " ".repeat(level * 2);
+            let indent = " ".repeat(level * INDENTATION_SPACES);
             let mut item = format!("{indent}{}", node.title);
 
             if let Some(ref value) = node.value {
