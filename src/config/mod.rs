@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::env;
+use std::fmt;
 use std::fs::File;
 
 #[derive(Debug)]
@@ -29,9 +30,9 @@ impl Menu {
             next_level: Vec::new(),
         };
         menu.items.push(root);
-
         menu.parse_json(&value, 0);
-        menu.print_menu(None, None);
+
+        println!("{}", menu);
 
         Ok(menu)
     }
@@ -57,23 +58,37 @@ impl Menu {
             _ => {}
         }
     }
+}
 
-    fn print_menu(&self, node: Option<&MenuItem>, level: Option<usize>) {
-        if self.items.len() == 0 {
-            return;
-        }
-        let current_node = node.unwrap_or(self.items.first().unwrap());
-        let indent = level.unwrap_or(0) * 2;
-        let mut item = " ".repeat(indent) + &current_node.title;
+impl fmt::Display for Menu {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn print_level(
+            f: &mut fmt::Formatter<'_>,
+            items: &[MenuItem],
+            node: &MenuItem,
+            level: usize,
+        ) -> fmt::Result {
+            let indent = " ".repeat(level * 2);
+            let mut item = format!("{indent}{}", node.title);
 
-        if let Some(value) = &current_node.value {
-            item = format!("{item} : {value}");
+            if let Some(ref value) = node.value {
+                item = format!("{item} : {value}");
+            }
+
+            writeln!(f, "{}", item)?;
+
+            for &subitem_idx in &node.next_level {
+                let subitem = &items[subitem_idx];
+                print_level(f, items, subitem, level + 1)?;
+            }
+
+            Ok(())
         }
 
-        println!("{}", item);
-        for &subitem_idx in &current_node.next_level {
-            let subitem = &self.items[subitem_idx];
-            self.print_menu(Some(subitem), Some(level.unwrap_or(0) + 1));
+        if let Some(first_item) = self.items.first() {
+            print_level(f, &self.items, first_item, 0)?;
         }
+
+        Ok(())
     }
 }
