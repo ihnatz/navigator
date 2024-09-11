@@ -9,19 +9,20 @@ struct MenuItem {
     next_level: Vec<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Menu {
     items: Vec<MenuItem>,
 }
 
 impl Menu {
-    pub fn read_config() -> Result<(), Box<dyn std::error::Error>> {
+    #[must_use]
+    pub fn read_config() -> Result<Menu, Box<dyn std::error::Error>> {
         let config_path =
             env::var("NAVIGATOR_CONFIG").expect("Can't find value of NAVIGATOR_CONFIG");
         let file = File::open(config_path)?;
-        let value: Value = serde_json::from_reader(file).expect("Can't parse JSON content");
+        let value: Value = serde_json::from_reader(file)?;
 
-        let mut menu = Menu { items: Vec::new() };
+        let mut menu = Menu::default();
         let root = MenuItem {
             title: "root".to_string(),
             value: None,
@@ -32,7 +33,7 @@ impl Menu {
         menu.parse_json(&value, 0);
         menu.print_menu(None, None);
 
-        Ok(())
+        Ok(menu)
     }
 
     fn parse_json(&mut self, value: &Value, parent_index: usize) {
@@ -65,9 +66,8 @@ impl Menu {
         let indent = level.unwrap_or(0) * 2;
         let mut item = " ".repeat(indent) + &current_node.title;
 
-        match &(current_node.value) {
-            Some(value) => item = item + ": " + &value,
-            None => {}
+        if let Some(value) = &current_node.value {
+            item = format!("{item} : {value}");
         }
 
         println!("{}", item);
