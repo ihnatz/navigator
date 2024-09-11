@@ -26,4 +26,21 @@ impl State<'_> {
     pub fn move_up(&mut self) {
         self.current_cursor = self.current_cursor.saturating_sub(1).max(0);
     }
+
+    pub fn is_terminating(&mut self) -> bool {
+        self.pressed_item().value.is_some()
+    }
+
+    pub fn go_inside(&mut self) {
+        self.current_item_id = self.pressed_item_id();
+        self.current_cursor = 0;
+    }
+
+    pub fn pressed_item(&self) -> &MenuItem {
+        &self.menu.items[self.pressed_item_id()]
+    }
+
+    fn pressed_item_id(&self) -> usize {
+        self.current_item().next_level[self.current_cursor]
+    }
 }

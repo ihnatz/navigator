@@ -32,8 +32,6 @@ impl Menu {
         menu.items.push(root);
         menu.parse_json(&value, 0);
 
-        println!("{}", menu);
-
         Ok(menu)
     }
 

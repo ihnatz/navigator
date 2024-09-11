@@ -21,6 +21,7 @@ enum Command {
     Quit,
     MoveUp,
     MoveDown,
+    GoInside,
 }
 
 pub fn main(menu: &Menu) -> io::Result<()> {
@@ -32,6 +33,7 @@ pub fn main(menu: &Menu) -> io::Result<()> {
         current_item_id: 0,
         menu: menu,
     };
+    let mut response = "";
 
     loop {
         terminal.draw(|f| ui(f, &state))?;
@@ -39,12 +41,21 @@ pub fn main(menu: &Menu) -> io::Result<()> {
             Ok(Some(Command::Quit)) => break,
             Ok(Some(Command::MoveUp)) => state.move_up(),
             Ok(Some(Command::MoveDown)) => state.move_down(),
+            Ok(Some(Command::GoInside)) => {
+                if state.is_terminating() {
+                    response = state.pressed_item().value.as_ref().unwrap();
+                    break;
+                } else {
+                    state.go_inside();
+                }
+            },
             _ => (),
         }
     }
 
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
+    println!("{}", response);
     Ok(())
 }
 
@@ -55,6 +66,7 @@ fn handle_events() -> Result<Option<Command>, std::io::Error> {
                 KeyCode::Char('q') => return Ok(Some(Command::Quit)),
                 KeyCode::Up => return Ok(Some(Command::MoveUp)),
                 KeyCode::Down => return Ok(Some(Command::MoveDown)),
+                KeyCode::Enter => return Ok(Some(Command::GoInside)),
                 _ => (),
             }
         }
