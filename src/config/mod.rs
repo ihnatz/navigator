@@ -4,15 +4,15 @@ use std::fmt;
 use std::fs::File;
 
 #[derive(Debug)]
-struct MenuItem {
-    title: String,
-    value: Option<String>,
-    next_level: Vec<usize>,
+pub struct MenuItem {
+    pub title: String,
+    pub value: Option<String>,
+    pub next_level: Vec<usize>,
 }
 
 #[derive(Debug, Default)]
 pub struct Menu {
-    items: Vec<MenuItem>,
+    pub items: Vec<MenuItem>,
 }
 
 impl Menu {

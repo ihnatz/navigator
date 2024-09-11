@@ -1,3 +1,5 @@
+use crate::config::Menu;
+use std::cmp;
 use std::io::{self, stdout};
 
 use ratatui::{
@@ -7,6 +9,8 @@ use ratatui::{
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
+    layout::{Constraint, Layout},
+    style::Stylize,
     widgets::{Block, Paragraph},
     Frame, Terminal,
 };
@@ -18,21 +22,32 @@ enum Command {
 }
 
 struct State {
-    current: usize,
+    current_cursor: usize,
+    current_item_id: usize,
 }
 
-pub fn main() -> io::Result<()> {
+pub fn main(menu: &Menu) -> io::Result<()> {
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    let mut state = State { current: 0 };
+    let mut state = State {
+        current_cursor: 0,
+        current_item_id: 0,
+    };
 
     loop {
-        terminal.draw(ui)?;
+        terminal.draw(|f| ui(f, &state, &menu))?;
         match handle_events() {
             Ok(Some(Command::Quit)) => break,
-            Ok(Some(Command::MoveUp)) => state.current = state.current.saturating_sub(1),
-            Ok(Some(Command::MoveDown)) => state.current = state.current.saturating_add(1),
+            Ok(Some(Command::MoveUp)) => {
+                state.current_cursor = state.current_cursor.saturating_sub(1).max(0)
+            }
+            Ok(Some(Command::MoveDown)) => {
+                state.current_cursor = state
+                    .current_cursor
+                    .saturating_add(1)
+                    .min(menu.items[state.current_item_id].next_level.len() - 1)
+            }
             _ => (),
         }
     }
@@ -56,9 +71,18 @@ fn handle_events() -> Result<Option<Command>, std::io::Error> {
     return Ok(None);
 }
 
-fn ui(frame: &mut Frame) {
-    frame.render_widget(
-        Paragraph::new("Hello World!").block(Block::bordered().title("Greeting")),
-        frame.area(),
-    );
+fn ui(frame: &mut Frame, state: &State, menu: &Menu) {
+    let area = frame.area();
+    let areas = Layout::vertical([Constraint::Length(1); 10]).split(area);
+
+    let current_item = &menu.items[state.current_item_id];
+    for (id, &item_idx) in current_item.next_level.iter().enumerate() {
+        let subitem = &menu.items[item_idx];
+
+        let mut line = Paragraph::new(&*subitem.title);
+        if id == state.current_cursor {
+            line = line.black().on_white();
+        }
+        frame.render_widget(line, areas[id]);
+    }
 }
