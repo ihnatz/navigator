@@ -1,5 +1,4 @@
-use crate::config::Menu;
-use std::cmp;
+use crate::config::{Menu, MenuItem};
 use std::io::{self, stdout};
 
 use ratatui::{
@@ -11,7 +10,7 @@ use ratatui::{
     },
     layout::{Constraint, Layout},
     style::Stylize,
-    widgets::{Block, Paragraph},
+    widgets::Paragraph,
     Frame, Terminal,
 };
 
@@ -21,9 +20,32 @@ enum Command {
     MoveDown,
 }
 
-struct State {
+struct State<'a> {
     current_cursor: usize,
     current_item_id: usize,
+    menu: &'a Menu,
+}
+
+impl State<'_> {
+    fn current_item(&self) -> &MenuItem {
+        &self.menu.items[self.current_item_id]
+    }
+
+    fn next_level(&self) -> impl Iterator<Item = &MenuItem> + '_ {
+        self.current_item()
+            .next_level
+            .iter()
+            .map(|&idx| &self.menu.items[idx])
+    }
+
+    fn move_down(&mut self) {
+        let max = self.next_level().count() - 1;
+        self.current_cursor = self.current_cursor.saturating_add(1).min(max);
+    }
+
+    fn move_up(&mut self) {
+        self.current_cursor = self.current_cursor.saturating_sub(1).max(0);
+    }
 }
 
 pub fn main(menu: &Menu) -> io::Result<()> {
@@ -33,21 +55,15 @@ pub fn main(menu: &Menu) -> io::Result<()> {
     let mut state = State {
         current_cursor: 0,
         current_item_id: 0,
+        menu: menu,
     };
 
     loop {
-        terminal.draw(|f| ui(f, &state, &menu))?;
+        terminal.draw(|f| ui(f, &state))?;
         match handle_events() {
             Ok(Some(Command::Quit)) => break,
-            Ok(Some(Command::MoveUp)) => {
-                state.current_cursor = state.current_cursor.saturating_sub(1).max(0)
-            }
-            Ok(Some(Command::MoveDown)) => {
-                state.current_cursor = state
-                    .current_cursor
-                    .saturating_add(1)
-                    .min(menu.items[state.current_item_id].next_level.len() - 1)
-            }
+            Ok(Some(Command::MoveUp)) => state.move_up(),
+            Ok(Some(Command::MoveDown)) => state.move_down(),
             _ => (),
         }
     }
@@ -71,14 +87,11 @@ fn handle_events() -> Result<Option<Command>, std::io::Error> {
     return Ok(None);
 }
 
-fn ui(frame: &mut Frame, state: &State, menu: &Menu) {
+fn ui(frame: &mut Frame, state: &State) {
     let area = frame.area();
     let areas = Layout::vertical([Constraint::Length(1); 10]).split(area);
 
-    let current_item = &menu.items[state.current_item_id];
-    for (id, &item_idx) in current_item.next_level.iter().enumerate() {
-        let subitem = &menu.items[item_idx];
-
+    for (id, subitem) in state.next_level().enumerate() {
         let mut line = Paragraph::new(&*subitem.title);
         if id == state.current_cursor {
             line = line.black().on_white();
