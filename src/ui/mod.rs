@@ -23,6 +23,7 @@ enum Command {
     MoveUp,
     MoveDown,
     GoInside,
+    GoOutside,
 }
 
 const ITEMS_PER_LIST: u16 = 8;
@@ -40,6 +41,7 @@ pub fn main(menu: &Menu) -> Result<()> {
             Ok(Some(Command::Quit)) => break None,
             Ok(Some(Command::MoveUp)) => state.move_up(),
             Ok(Some(Command::MoveDown)) => state.move_down(),
+            Ok(Some(Command::GoOutside)) => state.go_outside(),
             Ok(Some(Command::GoInside)) => {
                 if state.is_terminating() {
                     break Some(state.pressed_item().value.clone().unwrap());
@@ -67,6 +69,7 @@ fn handle_events() -> Result<Option<Command>> {
                 KeyCode::Up => return Ok(Some(Command::MoveUp)),
                 KeyCode::Down => return Ok(Some(Command::MoveDown)),
                 KeyCode::Enter => return Ok(Some(Command::GoInside)),
+                KeyCode::Esc => return Ok(Some(Command::GoOutside)),
                 _ => (),
             }
         }

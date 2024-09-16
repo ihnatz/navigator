@@ -36,8 +36,18 @@ impl State<'_> {
         self.current_cursor = 0;
     }
 
+    pub fn go_outside(&mut self) {
+        let cursor_at = self.parent_item().next_level.iter().position(|&x| x == self.current_item_id).unwrap_or(0);
+        self.current_item_id = self.current_item().parent_id;
+        self.current_cursor = cursor_at;
+    }
+
     pub fn pressed_item(&self) -> &MenuItem {
         &self.menu.items[self.pressed_item_id()]
+    }
+
+    pub fn parent_item(&self) -> &MenuItem {
+        &self.menu.items[self.current_item().parent_id]
     }
 
     fn pressed_item_id(&self) -> usize {

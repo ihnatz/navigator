@@ -8,6 +8,7 @@ pub struct MenuItem {
     pub title: String,
     pub value: Option<String>,
     pub next_level: Vec<usize>,
+    pub parent_id: usize,
 }
 
 #[derive(Debug, Default)]
@@ -28,6 +29,7 @@ impl Menu {
             title: "root".to_string(),
             value: None,
             next_level: Vec::new(),
+            parent_id: 0,
         };
         menu.items.push(root);
         menu.parse_json(&value, 0);
@@ -43,6 +45,7 @@ impl Menu {
                         title: key.to_string(),
                         value: None,
                         next_level: Vec::new(),
+                        parent_id: parent_index,
                     };
                     let new_index = self.items.len();
                     self.items.push(new_item);

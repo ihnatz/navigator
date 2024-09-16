@@ -1,12 +1,67 @@
 {
-  "foo": {
-    "bar": {
-      "baz": "echo 'Hello World'",
-      "fub": "ls -al"
+  "systemCommands": {
+    "fileOperations": {
+      "listFiles": "ls -l",
+      "searchFiles": "find . -name '*.txt'",
+      "countLines": "wc -l *.txt",
+      "showDirectoryTree": "tree -L 2"
+    },
+    "processManagement": {
+      "listProcesses": "ps aux",
+      "topProcesses": "top -n 1",
+      "memoryUsage": "free -h"
+    },
+    "networkTools": {
+      "checkConnectivity": "ping -c 4 google.com",
+      "showOpenPorts": "netstat -tuln"
     }
   },
-  "til": "sudo du --exclude=/mnt/ -h . | sort -rh | head -10",
-  "abc": {
-    "inner": "cat ~/.zsh_eternal_history"
+  "userPreferences": {
+    "shellCustomization": {
+      "aliases": {
+        "showAliases": "alias",
+        "listDirectories": "alias ll='ls -lh'",
+        "goToParent": "alias ..='cd ..'"
+      },
+      "promptStyling": "export PS1='\\u@\\h:\\w\\$ '"
+    },
+    "editorSettings": {
+      "vimrc": "cat ~/.vimrc",
+      "nanorc": "cat ~/.nanorc"
+    }
+  },
+  "developmentTools": {
+    "versionControl": {
+      "gitStatus": "git status",
+      "gitLog": "git log --oneline -n 5",
+      "gitBranches": "git branch -v"
+    },
+    "buildTools": {
+      "compileCpp": "g++ -std=c++11 main.cpp -o program",
+      "runPythonTests": "python -m unittest discover tests"
+    },
+    "containerization": {
+      "dockerImages": "docker images",
+      "dockerContainers": "docker ps -a"
+    }
+  },
+  "systemInfo": {
+    "hardwareDetails": {
+      "cpuInfo": "lscpu",
+      "diskUsage": "df -h",
+      "ramInfo": "cat /proc/meminfo"
+    },
+    "osDetails": {
+      "distribution": "cat /etc/os-release",
+      "kernelVersion": "uname -r"
+    }
+  },
+  "backupAndArchiving": {
+    "createArchive": "tar -czvf backup.tar.gz /path/to/files",
+    "listArchiveContents": "tar -tvf backup.tar.gz"
+  },
+  "textProcessing": {
+    "wordCount": "wc -w file.txt",
+    "findReplace": "sed 's/old/new/g' file.txt"
   }
 }
