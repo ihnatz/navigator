@@ -2,21 +2,22 @@ pub mod state;
 
 use crate::config::Menu;
 use crate::ui::state::State;
-use std::io::{self, stdout};
+
+use std::io::{Result, Stdout};
 
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
         event::{self, Event, KeyCode},
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-        ExecutableCommand,
+        terminal::{disable_raw_mode, enable_raw_mode},
     },
     layout::{Constraint, Layout},
     style::Stylize,
     widgets::Paragraph,
-    Frame, Terminal,
+    Frame, Terminal, TerminalOptions, Viewport,
 };
 
+#[derive(Debug)]
 enum Command {
     Quit,
     MoveUp,
@@ -24,42 +25,41 @@ enum Command {
     GoInside,
 }
 
-pub fn main(menu: &Menu) -> io::Result<()> {
-    enable_raw_mode()?;
-    stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+const ITEMS_PER_LIST: u16 = 8;
+
+pub fn main(menu: &Menu) -> Result<()> {
     let mut state = State {
         current_cursor: 0,
         current_item_id: 0,
         menu: menu,
     };
-    let mut response = "";
 
-    loop {
-        terminal.draw(|f| ui(f, &state))?;
+    let response = with_terminal(|mut terminal| loop {
+        terminal.draw(|f| ui(f, &state)).unwrap();
         match handle_events() {
-            Ok(Some(Command::Quit)) => break,
+            Ok(Some(Command::Quit)) => break None,
             Ok(Some(Command::MoveUp)) => state.move_up(),
             Ok(Some(Command::MoveDown)) => state.move_down(),
             Ok(Some(Command::GoInside)) => {
                 if state.is_terminating() {
-                    response = state.pressed_item().value.as_ref().unwrap();
-                    break;
+                    break Some(state.pressed_item().value.clone().unwrap());
                 } else {
                     state.go_inside();
                 }
-            },
+            }
             _ => (),
         }
+    })
+    .unwrap();
+
+    if let Some(command) = response {
+        println!("{}", command);
     }
 
-    disable_raw_mode()?;
-    stdout().execute(LeaveAlternateScreen)?;
-    println!("{}", response);
     Ok(())
 }
 
-fn handle_events() -> Result<Option<Command>, std::io::Error> {
+fn handle_events() -> Result<Option<Command>> {
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
             match key.code {
@@ -76,7 +76,7 @@ fn handle_events() -> Result<Option<Command>, std::io::Error> {
 
 fn ui(frame: &mut Frame, state: &State) {
     let area = frame.area();
-    let areas = Layout::vertical([Constraint::Length(1); 10]).split(area);
+    let areas = Layout::vertical([Constraint::Length(1); ITEMS_PER_LIST as usize]).split(area);
 
     for (id, subitem) in state.next_level().enumerate() {
         let mut line = Paragraph::new(&*subitem.title);
@@ -85,4 +85,19 @@ fn ui(frame: &mut Frame, state: &State) {
         }
         frame.render_widget(line, areas[id]);
     }
+}
+
+fn with_terminal<F, T>(f: F) -> Result<T>
+where
+    F: FnOnce(Terminal<CrosstermBackend<Stdout>>) -> T,
+{
+    let terminal = ratatui::init_with_options(TerminalOptions {
+        viewport: Viewport::Inline(ITEMS_PER_LIST),
+    });
+
+    enable_raw_mode()?;
+    let result = f(terminal);
+    disable_raw_mode()?;
+
+    Ok(result)
 }
