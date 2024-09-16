@@ -3,7 +3,7 @@ pub mod state;
 use crate::config::Menu;
 use crate::ui::state::State;
 
-use std::io::{Result, Stdout};
+use std::io::{Result, Stdout, stdout, Write};
 
 use ratatui::{
     backend::CrosstermBackend,
@@ -28,14 +28,14 @@ enum Command {
 
 const ITEMS_PER_LIST: u16 = 8;
 
-pub fn main(menu: &Menu) -> Result<()> {
+pub fn main(menu: &Menu) -> Option<String> {
     let mut state = State {
         current_cursor: 0,
         current_item_id: 0,
         menu: menu,
     };
 
-    let response = with_terminal(|mut terminal| loop {
+    let response = with_terminal(|terminal| loop {
         terminal.draw(|f| ui(f, &state)).unwrap();
         match handle_events() {
             Ok(Some(Command::Quit)) => break None,
@@ -54,11 +54,7 @@ pub fn main(menu: &Menu) -> Result<()> {
     })
     .unwrap();
 
-    if let Some(command) = response {
-        println!("{}", command);
-    }
-
-    Ok(())
+    response
 }
 
 fn handle_events() -> Result<Option<Command>> {
@@ -92,15 +88,20 @@ fn ui(frame: &mut Frame, state: &State) {
 
 fn with_terminal<F, T>(f: F) -> Result<T>
 where
-    F: FnOnce(Terminal<CrosstermBackend<Stdout>>) -> T,
+    F: FnOnce(&mut Terminal<CrosstermBackend<Stdout>>) -> T,
 {
-    let terminal = ratatui::init_with_options(TerminalOptions {
+    let mut terminal = ratatui::init_with_options(TerminalOptions {
         viewport: Viewport::Inline(ITEMS_PER_LIST),
     });
 
     enable_raw_mode()?;
-    let result = f(terminal);
+    let result = f(&mut terminal);
     disable_raw_mode()?;
+
+    terminal.clear().unwrap();
+    terminal.draw(|_f| {}).unwrap();
+
+    stdout().flush()?;
 
     Ok(result)
 }
