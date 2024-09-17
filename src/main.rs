@@ -3,5 +3,7 @@ mod ui;
 
 fn main() {
     let menu = config::Menu::read_config();
-    let _ = ui::main(&menu.unwrap());
+    if let Some(command) = ui::main(&menu.unwrap()) {
+        println!("{command}");
+    }
 }
