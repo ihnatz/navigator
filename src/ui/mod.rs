@@ -3,7 +3,7 @@ pub mod state;
 use crate::config::Menu;
 use crate::ui::state::State;
 
-use std::io::{Result, Stdout, stdout, Write};
+use std::io::{stdout, Result, Stdout, Write};
 
 use ratatui::{
     backend::CrosstermBackend,
@@ -26,7 +26,7 @@ enum Command {
     GoOutside,
 }
 
-const ITEMS_PER_LIST: u16 = 8;
+const ITEMS_PER_LIST: usize = 5;
 
 pub fn main(menu: &Menu) -> Option<String> {
     let mut state = State {
@@ -74,15 +74,22 @@ fn handle_events() -> Result<Option<Command>> {
 }
 
 fn ui(frame: &mut Frame, state: &State) {
-    let area = frame.area();
-    let areas = Layout::vertical([Constraint::Length(1); ITEMS_PER_LIST as usize]).split(area);
+    let areas = Layout::vertical([Constraint::Length(1); ITEMS_PER_LIST]).split(frame.area());
+    let skip_count = state
+        .current_cursor
+        .saturating_sub(ITEMS_PER_LIST.saturating_sub(1));
 
-    for (id, subitem) in state.next_level().enumerate() {
+    for (id, subitem) in state
+        .next_level()
+        .enumerate()
+        .skip(skip_count)
+        .take(ITEMS_PER_LIST)
+    {
         let mut line = Paragraph::new(&*subitem.title);
         if id == state.current_cursor {
             line = line.black().on_white();
         }
-        frame.render_widget(line, areas[id]);
+        frame.render_widget(line, areas[id - skip_count]);
     }
 }
 
@@ -91,7 +98,7 @@ where
     F: FnOnce(&mut Terminal<CrosstermBackend<Stdout>>) -> T,
 {
     let mut terminal = ratatui::init_with_options(TerminalOptions {
-        viewport: Viewport::Inline(ITEMS_PER_LIST),
+        viewport: Viewport::Inline(ITEMS_PER_LIST as u16),
     });
 
     enable_raw_mode()?;

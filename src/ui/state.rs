@@ -37,7 +37,12 @@ impl State<'_> {
     }
 
     pub fn go_outside(&mut self) {
-        let cursor_at = self.parent_item().next_level.iter().position(|&x| x == self.current_item_id).unwrap_or(0);
+        let cursor_at = self
+            .parent_item()
+            .next_level
+            .iter()
+            .position(|&x| x == self.current_item_id)
+            .unwrap_or(0);
         self.current_item_id = self.current_item().parent_id;
         self.current_cursor = cursor_at;
     }
