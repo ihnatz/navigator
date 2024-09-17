@@ -17,7 +17,6 @@ pub struct Menu {
 }
 
 impl Menu {
-    #[must_use]
     pub fn read_config() -> Result<Menu, Box<dyn std::error::Error>> {
         let config_path =
             env::var("NAVIGATOR_CONFIG").expect("Can't find value of NAVIGATOR_CONFIG");
@@ -50,7 +49,7 @@ impl Menu {
                     let new_index = self.items.len();
                     self.items.push(new_item);
                     self.items[parent_index].next_level.push(new_index);
-                    self.parse_json(&val, new_index)
+                    self.parse_json(val, new_index)
                 }
             }
             Value::String(s) => {

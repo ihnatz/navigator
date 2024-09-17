@@ -32,7 +32,7 @@ pub fn main(menu: &Menu) -> Option<String> {
     let mut state = State {
         current_cursor: 0,
         current_item_id: 0,
-        menu: menu,
+        menu,
     };
 
     let response = with_terminal(|terminal| loop {
@@ -70,7 +70,7 @@ fn handle_events() -> Result<Option<Command>> {
             }
         }
     }
-    return Ok(None);
+    Ok(None)
 }
 
 fn ui(frame: &mut Frame, state: &State) {
