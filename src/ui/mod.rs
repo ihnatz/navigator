@@ -3,8 +3,8 @@ pub mod state;
 use crate::config::Menu;
 use crate::ui::state::State;
 
-use std::io::{stdin, stdout, Result, Stdout, Write};
-use termion::{clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode, style};
+use std::io::{stdin, stdout, BufWriter, Result, Stdout, Write};
+use termion::{clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode, raw::RawTerminal, style};
 
 #[derive(Debug)]
 enum Command {
@@ -24,12 +24,12 @@ pub fn main(menu: &Menu) -> Option<String> {
         menu,
     };
 
-    let response = with_terminal(|stdout| loop {
+    let response = with_terminal(|buf_writer| loop {
         let items = state
             .next_level()
             .map(|item| &*item.title)
             .collect::<Vec<&str>>();
-        render_list(&items, state.current_cursor, stdout);
+        render_list(&items, state.current_cursor, buf_writer);
         match handle_events() {
             Ok(Some(Command::Quit)) => break None,
             Ok(Some(Command::MoveUp)) => state.move_up(),
@@ -67,27 +67,28 @@ fn handle_events() -> Result<Option<Command>> {
 
 fn with_terminal<F, T>(f: F) -> Result<T>
 where
-    F: FnOnce(&mut Stdout) -> T,
+    F: FnOnce(&mut BufWriter<RawTerminal<Stdout>>) -> T,
 {
-    let mut raw_stdout = stdout().into_raw_mode()?;
+    let raw_stdout = stdout().into_raw_mode()?;
+    let mut buf_writer = BufWriter::new(raw_stdout);
 
-    writeln!(raw_stdout)?;
-    write!(raw_stdout, "{}", cursor::Hide)?;
-    write!(raw_stdout, "{}", cursor::Save)?;
-    write!(raw_stdout, "{}", clear::AfterCursor)?;
-    raw_stdout.flush()?;
+    writeln!(buf_writer)?;
+    write!(buf_writer, "{}", cursor::Hide)?;
+    write!(buf_writer, "{}", cursor::Save)?;
+    write!(buf_writer, "{}", clear::AfterCursor)?;
+    buf_writer.flush()?;
 
-    let result = f(&mut raw_stdout);
+    let result = f(&mut buf_writer);
 
-    write!(raw_stdout, "{}", cursor::Restore)?;
-    write!(raw_stdout, "{}", cursor::Show)?;
-    raw_stdout.flush()?;
+    write!(buf_writer, "{}", cursor::Restore)?;
+    write!(buf_writer, "{}", cursor::Show)?;
+    buf_writer.flush()?;
 
     Ok(result)
 }
 
-fn render_list(items: &[&str], selected_index: usize, stdout: &mut impl Write) {
-    write!(stdout, "{}", clear::AfterCursor).unwrap();
+fn render_list(items: &[&str], selected_index: usize, buf_writer: &mut BufWriter<impl Write>) {
+    write!(buf_writer, "{}", clear::AfterCursor).unwrap();
     let skip_count = calculate_window_start(selected_index, items.len(), ITEMS_PER_LIST);
 
     for (i, item) in items
@@ -98,7 +99,7 @@ fn render_list(items: &[&str], selected_index: usize, stdout: &mut impl Write) {
     {
         if i == selected_index {
             write!(
-                stdout,
+                buf_writer,
                 " {}{}>{}{} {}\r\n",
                 style::Bold,
                 color::Fg(color::Blue),
@@ -108,17 +109,17 @@ fn render_list(items: &[&str], selected_index: usize, stdout: &mut impl Write) {
             )
             .unwrap();
         } else {
-            write!(stdout, "   {}\r\n", item).unwrap();
+            write!(buf_writer, "   {}\r\n", item).unwrap();
         }
     }
     if items.len() < ITEMS_PER_LIST {
         for _i in items.len()..ITEMS_PER_LIST {
-            writeln!(stdout).unwrap();
+            writeln!(buf_writer).unwrap();
         }
     }
 
-    write!(stdout, "{}", cursor::Up(ITEMS_PER_LIST as u16)).unwrap();
-    stdout.flush().unwrap();
+    write!(buf_writer, "{}", cursor::Up(ITEMS_PER_LIST as u16)).unwrap();
+    buf_writer.flush().unwrap();
 }
 
 fn calculate_window_start(selected_index: usize, total_items: usize, window_size: usize) -> usize {
