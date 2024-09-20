@@ -3,19 +3,8 @@ pub mod state;
 use crate::config::Menu;
 use crate::ui::state::State;
 
-use std::io::{stdout, Result, Stdout, Write};
-
-use ratatui::{
-    backend::CrosstermBackend,
-    crossterm::{
-        event::{self, Event, KeyCode},
-        terminal::{disable_raw_mode, enable_raw_mode},
-    },
-    layout::{Constraint, Layout},
-    style::Stylize,
-    widgets::Paragraph,
-    Frame, Terminal, TerminalOptions, Viewport,
-};
+use std::io::{stdin, stdout, Result, Stdout, Write};
+use termion::{clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode, style};
 
 #[derive(Debug)]
 enum Command {
@@ -35,8 +24,12 @@ pub fn main(menu: &Menu) -> Option<String> {
         menu,
     };
 
-    let response = with_terminal(|terminal| loop {
-        terminal.draw(|f| ui(f, &state)).unwrap();
+    let response = with_terminal(|stdout| loop {
+        let items = state
+            .next_level()
+            .map(|item| &*item.title)
+            .collect::<Vec<&str>>();
+        render_list(&items, state.current_cursor, stdout);
         match handle_events() {
             Ok(Some(Command::Quit)) => break None,
             Ok(Some(Command::MoveUp)) => state.move_up(),
@@ -48,7 +41,7 @@ pub fn main(menu: &Menu) -> Option<String> {
                 } else {
                     state.go_inside();
                 }
-            }
+            },
             _ => (),
         }
     })
@@ -58,57 +51,82 @@ pub fn main(menu: &Menu) -> Option<String> {
 }
 
 fn handle_events() -> Result<Option<Command>> {
-    if event::poll(std::time::Duration::from_millis(50))? {
-        if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char('q') => return Ok(Some(Command::Quit)),
-                KeyCode::Up => return Ok(Some(Command::MoveUp)),
-                KeyCode::Down => return Ok(Some(Command::MoveDown)),
-                KeyCode::Enter => return Ok(Some(Command::GoInside)),
-                KeyCode::Esc => return Ok(Some(Command::GoOutside)),
-                _ => (),
-            }
+    let stdin = stdin();
+    for key in stdin.keys() {
+        match key? {
+            Key::Char('q') => return Ok(Some(Command::Quit)),
+            Key::Up => return Ok(Some(Command::MoveUp)),
+            Key::Down => return Ok(Some(Command::MoveDown)),
+            Key::Char('\n') => return Ok(Some(Command::GoInside)),
+            Key::Esc => return Ok(Some(Command::GoOutside)),
+            _ => (),
         }
     }
     Ok(None)
 }
 
-fn ui(frame: &mut Frame, state: &State) {
-    let areas = Layout::vertical([Constraint::Length(1); ITEMS_PER_LIST]).split(frame.area());
-    let skip_count = state
-        .current_cursor
-        .saturating_sub(ITEMS_PER_LIST.saturating_sub(1));
+fn with_terminal<F, T>(f: F) -> Result<T>
+where
+    F: FnOnce(&mut Stdout) -> T,
+{
+    let mut raw_stdout = stdout().into_raw_mode()?;
 
-    for (id, subitem) in state
-        .next_level()
+    writeln!(raw_stdout)?;
+    write!(raw_stdout, "{}", cursor::Hide)?;
+    write!(raw_stdout, "{}", cursor::Save)?;
+    write!(raw_stdout, "{}", clear::AfterCursor)?;
+    raw_stdout.flush()?;
+
+    let result = f(&mut raw_stdout);
+
+    write!(raw_stdout, "{}", cursor::Restore)?;
+    write!(raw_stdout, "{}", cursor::Show)?;
+    raw_stdout.flush()?;
+
+    Ok(result)
+}
+
+fn render_list(items: &[&str], selected_index: usize, stdout: &mut impl Write) {
+    write!(stdout, "{}", clear::AfterCursor).unwrap();
+    let skip_count = calculate_window_start(selected_index, items.len(), ITEMS_PER_LIST);
+
+    for (i, item) in items
+        .iter()
         .enumerate()
         .skip(skip_count)
         .take(ITEMS_PER_LIST)
     {
-        let mut line = Paragraph::new(&*subitem.title);
-        if id == state.current_cursor {
-            line = line.black().on_white();
+        if i == selected_index {
+            write!(
+                stdout,
+                " {}{}>{}{} {}\r\n",
+                style::Bold,
+                color::Fg(color::Blue),
+                color::Fg(color::Reset),
+                style::Reset,
+                item
+            )
+            .unwrap();
+        } else {
+            write!(stdout, "   {}\r\n", item).unwrap();
         }
-        frame.render_widget(line, areas[id - skip_count]);
     }
+    if items.len() < ITEMS_PER_LIST {
+        for _i in items.len()..ITEMS_PER_LIST {
+            writeln!(stdout).unwrap();
+        }
+    }
+
+    write!(stdout, "{}", cursor::Up(ITEMS_PER_LIST as u16)).unwrap();
+    stdout.flush().unwrap();
 }
 
-fn with_terminal<F, T>(f: F) -> Result<T>
-where
-    F: FnOnce(&mut Terminal<CrosstermBackend<Stdout>>) -> T,
-{
-    let mut terminal = ratatui::init_with_options(TerminalOptions {
-        viewport: Viewport::Inline(ITEMS_PER_LIST as u16),
-    });
-
-    enable_raw_mode()?;
-    let result = f(&mut terminal);
-    disable_raw_mode()?;
-
-    terminal.clear().unwrap();
-    terminal.draw(|_f| {}).unwrap();
-
-    stdout().flush()?;
-
-    Ok(result)
+fn calculate_window_start(selected_index: usize, total_items: usize, window_size: usize) -> usize {
+    if selected_index < window_size {
+        0
+    } else if selected_index > total_items - window_size {
+        total_items - window_size
+    } else {
+        selected_index - window_size / 2
+    }
 }
