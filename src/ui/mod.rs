@@ -4,7 +4,9 @@ use crate::config::Menu;
 use crate::ui::state::State;
 
 use std::io::{stdin, stdout, BufWriter, Result, Stdout, Write};
-use termion::{clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode, raw::RawTerminal, style};
+use termion::{
+    clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode, raw::RawTerminal, style,
+};
 
 #[derive(Debug)]
 enum Command {
@@ -41,7 +43,7 @@ pub fn main(menu: &Menu) -> Option<String> {
                 } else {
                     state.go_inside();
                 }
-            },
+            }
             _ => (),
         }
     })
@@ -55,10 +57,10 @@ fn handle_events() -> Result<Option<Command>> {
     for key in stdin.keys() {
         match key? {
             Key::Char('q') => return Ok(Some(Command::Quit)),
-            Key::Up => return Ok(Some(Command::MoveUp)),
-            Key::Down => return Ok(Some(Command::MoveDown)),
-            Key::Char('\n') => return Ok(Some(Command::GoInside)),
-            Key::Esc => return Ok(Some(Command::GoOutside)),
+            Key::Up | Key::Char('k') => return Ok(Some(Command::MoveUp)),
+            Key::Down | Key::Char('j') => return Ok(Some(Command::MoveDown)),
+            Key::Char('\n') | Key::Char('l') => return Ok(Some(Command::GoInside)),
+            Key::Esc | Key::Char('h') => return Ok(Some(Command::GoOutside)),
             _ => (),
         }
     }
@@ -72,16 +74,18 @@ where
     let raw_stdout = stdout().into_raw_mode()?;
     let mut buf_writer = BufWriter::new(raw_stdout);
 
-    writeln!(buf_writer)?;
-    write!(buf_writer, "{}", cursor::Hide)?;
-    write!(buf_writer, "{}", cursor::Save)?;
-    write!(buf_writer, "{}", clear::AfterCursor)?;
+    write!(
+        buf_writer,
+        "{}{}{}",
+        clear::AfterCursor,
+        cursor::Save,
+        cursor::Hide,
+    )?;
     buf_writer.flush()?;
 
     let result = f(&mut buf_writer);
 
-    write!(buf_writer, "{}", cursor::Restore)?;
-    write!(buf_writer, "{}", cursor::Show)?;
+    write!(buf_writer, "{}{}", cursor::Restore, cursor::Show,)?;
     buf_writer.flush()?;
 
     Ok(result)
