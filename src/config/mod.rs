@@ -3,7 +3,7 @@ use std::env;
 use std::fmt;
 use std::fs::File;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MenuItem {
     pub title: String,
     pub value: Option<String>,
@@ -92,5 +92,32 @@ impl fmt::Display for Menu {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic_one_level_structure() {
+        let json = r#"
+        {
+            "item2": "value2",
+            "item1": "value1",
+            "item3": "value3"
+        }
+        "#;
+
+        let value: Value = serde_json::from_str(json).unwrap();
+        let mut menu = Menu::default();
+        menu.items.push(MenuItem::default());
+        menu.parse_json(&value, 0);
+
+        assert_eq!(menu.items.len(), 4);
+        assert_eq!(menu.items[0].next_level.len(), 3);
+        assert_eq!(menu.items[1].title, "item2");
+        assert_eq!(menu.items[2].title, "item1");
+        assert_eq!(menu.items[3].title, "item3");
     }
 }

@@ -74,6 +74,7 @@ where
     let raw_stdout = stdout().into_raw_mode()?;
     let mut buf_writer = BufWriter::new(raw_stdout);
 
+    write!(buf_writer, "\n\r")?;
     write!(
         buf_writer,
         "{}{}{}",
