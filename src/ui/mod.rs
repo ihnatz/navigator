@@ -56,7 +56,7 @@ fn handle_events() -> Result<Option<Command>> {
     let stdin = stdin();
     for key in stdin.keys() {
         match key? {
-            Key::Char('q') => return Ok(Some(Command::Quit)),
+            Key::Char('q') | Key::Ctrl('c') => return Ok(Some(Command::Quit)),
             Key::Up | Key::Char('k') => return Ok(Some(Command::MoveUp)),
             Key::Down | Key::Char('j') => return Ok(Some(Command::MoveDown)),
             Key::Char('\n') | Key::Char('l') => return Ok(Some(Command::GoInside)),
