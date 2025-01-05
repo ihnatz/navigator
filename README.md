@@ -2,6 +2,7 @@
 
 A lightning-fast CLI utility that helps you navigate and execute your frequently used commands through an interactive hierarchical menu.
 
+![demo](https://github.com/user-attachments/assets/21bd709d-7a6f-4c6a-925e-a831360d0209)
 
 ## Features
 
