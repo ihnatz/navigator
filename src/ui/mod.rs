@@ -84,9 +84,17 @@ where
     )?;
     buf_writer.flush()?;
 
+    struct CleanupGuard;
+    impl Drop for CleanupGuard {
+        fn drop(&mut self) {
+            let _ = write!(stdout(), "{}{}", cursor::Restore, cursor::Show);
+            let _ = stdout().flush();
+        }
+    }
+
+    let _guard = CleanupGuard;
     let result = f(&mut buf_writer);
 
-    write!(buf_writer, "{}{}", cursor::Restore, cursor::Show,)?;
     buf_writer.flush()?;
 
     Ok(result)

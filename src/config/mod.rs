@@ -1,9 +1,8 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde_json::Value;
 use std::env;
 use std::fmt;
 use std::fs::File;
-
 
 #[derive(Debug, Default)]
 pub struct MenuItem {
@@ -20,10 +19,12 @@ pub struct Menu {
 
 impl Menu {
     pub fn read_config() -> Result<Menu> {
-        let config_path =
-            env::var("NAVIGATOR_CONFIG").expect("Can't find value of NAVIGATOR_CONFIG");
-        let file = File::open(config_path)?;
-        let value: Value = serde_json::from_reader(file)?;
+        let config_path = env::var("NAVIGATOR_CONFIG")
+            .context("NAVIGATOR_CONFIG environment variable is not set")?;
+        let file = File::open(&config_path)
+            .with_context(|| format!("Cannot open config file '{config_path}'"))?;
+        let value: Value = serde_json::from_reader(file)
+            .with_context(|| format!("Invalid JSON in config file '{config_path}'"))?;
 
         let mut menu = Menu::default();
         let root = MenuItem {
